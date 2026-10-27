@@ -7,6 +7,7 @@ const links = [
   { href: "/", label: "Today" },
   { href: "/research", label: "Supplier research" },
   { href: "/report", label: "End-of-day report" },
+  { href: "/connect", label: "Connections" },
 ];
 
 export default function Sidebar() {

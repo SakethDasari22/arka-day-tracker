@@ -14,6 +14,14 @@ const LOG_TAGS = [
 ];
 const SUPPLIER_GOAL = 15;
 
+interface GmailRow {
+  id: string;
+  from: string;
+  subject: string;
+  date: string;
+  snippet: string;
+}
+
 export default function TodayScreen({
   userName,
   dateLong,
@@ -22,6 +30,7 @@ export default function TodayScreen({
   log: initialLog,
   suppliersTotal,
   suppliersWithEmail,
+  googleConnected,
 }: {
   userName: string;
   dateLong: string;
@@ -30,6 +39,7 @@ export default function TodayScreen({
   log: LogEntry[];
   suppliersTotal: number;
   suppliersWithEmail: number;
+  googleConnected: boolean;
 }) {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
@@ -41,6 +51,35 @@ export default function TodayScreen({
   const [error, setError] = useState("");
   const [editingAssignment, setEditingAssignment] = useState(false);
   const [allanMsg, setAllanMsg] = useState(assignment?.raw_message ?? "");
+  const [emails, setEmails] = useState<GmailRow[] | null>(null);
+  const [gmailBusy, setGmailBusy] = useState(false);
+
+  async function pullGmail() {
+    setGmailBusy(true);
+    setError("");
+    try {
+      const res = await api<{ emails: GmailRow[] }>("/api/gmail");
+      setEmails(res.emails);
+    } catch (e) {
+      setError(msg(e));
+    } finally {
+      setGmailBusy(false);
+    }
+  }
+
+  async function emailToTask(id: string) {
+    setGmailBusy(true);
+    setError("");
+    try {
+      await api("/api/gmail/to-task", { method: "POST", body: { messageId: id } });
+      setEmails(null);
+      router.refresh();
+    } catch (e) {
+      setError(msg(e));
+    } finally {
+      setGmailBusy(false);
+    }
+  }
 
   const doneCount = tasks.filter((t) => t.done).length;
 
@@ -341,14 +380,46 @@ export default function TodayScreen({
           <section className="card">
             <div className="row-between">
               <h2 className="section">Allan&apos;s message</h2>
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={() => setEditingAssignment((v) => !v)}
-              >
-                {editingAssignment ? "Cancel" : assignment ? "Update" : "Add"}
-              </button>
+              <div className="wrap-gap" style={{ gap: 8 }}>
+                {googleConnected ? (
+                  <button type="button" className="btn btn-sm" onClick={pullGmail} disabled={gmailBusy}>
+                    {gmailBusy ? "…" : "Pull from Gmail"}
+                  </button>
+                ) : (
+                  <Link href="/connect" className="btn btn-sm">Connect Gmail</Link>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={() => setEditingAssignment((v) => !v)}
+                >
+                  {editingAssignment ? "Cancel" : assignment ? "Update" : "Add"}
+                </button>
+              </div>
             </div>
+
+            {emails && (
+              <div style={{ marginTop: 12, border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden" }}>
+                {emails.length === 0 && (
+                  <div className="sub" style={{ padding: 12 }}>No recent emails found.</div>
+                )}
+                {emails.map((em) => (
+                  <div key={em.id} style={{ padding: "10px 12px", borderBottom: "1px solid var(--line-2)", display: "flex", gap: 10, alignItems: "center" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{em.subject}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted-2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{em.from}</div>
+                    </div>
+                    <button type="button" className="btn btn-sm btn-primary" onClick={() => emailToTask(em.id)} disabled={gmailBusy}>
+                      Make task
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="icon-btn" style={{ margin: 8 }} onClick={() => setEmails(null)}>
+                  Close
+                </button>
+              </div>
+            )}
+
             {editingAssignment ? (
               <form onSubmit={saveAssignment} style={{ marginTop: 12 }}>
                 <textarea

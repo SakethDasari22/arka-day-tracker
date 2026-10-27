@@ -13,7 +13,8 @@ import type {
 
 export async function getAssignment(): Promise<Assignment | null> {
   const { rows } = await query<Assignment>(
-    `SELECT id, day::text AS day, title, area, material, need, raw_message
+    `SELECT id, day::text AS day, title, area, material, need, raw_message,
+            sheet_id, sheet_name, sheet_url
        FROM assignments
       WHERE day = CURRENT_DATE
       ORDER BY id DESC
@@ -32,20 +33,46 @@ export interface AssignmentInput {
 
 /** Replace today's assignment with a new one (one active assignment per day). */
 export async function setAssignment(input: AssignmentInput): Promise<Assignment> {
+  // Preserve a linked sheet across a re-parse of the assignment.
+  const prev = await getAssignment();
   await query(`DELETE FROM assignments WHERE day = CURRENT_DATE`);
   const { rows } = await query<Assignment>(
-    `INSERT INTO assignments (title, area, material, need, raw_message)
-     VALUES ($1,$2,$3,$4,$5)
-     RETURNING id, day::text AS day, title, area, material, need, raw_message`,
+    `INSERT INTO assignments (title, area, material, need, raw_message, sheet_id, sheet_name, sheet_url)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     RETURNING id, day::text AS day, title, area, material, need, raw_message, sheet_id, sheet_name, sheet_url`,
     [
       input.title,
       input.area ?? null,
       input.material ?? null,
       input.need ?? null,
       input.raw_message ?? null,
+      prev?.sheet_id ?? null,
+      prev?.sheet_name ?? null,
+      prev?.sheet_url ?? null,
     ]
   );
   return rows[0];
+}
+
+/** Link (or clear) a Google Sheet on today's assignment. Creates a stub
+ * assignment if none exists yet so the link has somewhere to live. */
+export async function setAssignmentSheet(
+  sheet: { id: string; name: string; url: string } | null
+): Promise<Assignment> {
+  const existing = await getAssignment();
+  if (!existing) {
+    await query(
+      `INSERT INTO assignments (title, sheet_id, sheet_name, sheet_url)
+       VALUES ($1,$2,$3,$4)`,
+      ["Supplier research", sheet?.id ?? null, sheet?.name ?? null, sheet?.url ?? null]
+    );
+  } else {
+    await query(
+      `UPDATE assignments SET sheet_id=$2, sheet_name=$3, sheet_url=$4 WHERE id=$1`,
+      [existing.id, sheet?.id ?? null, sheet?.name ?? null, sheet?.url ?? null]
+    );
+  }
+  return (await getAssignment())!;
 }
 
 /**
@@ -181,6 +208,87 @@ export async function addSupplier(input: SupplierInput): Promise<Supplier> {
 
 export async function deleteSupplier(id: number): Promise<void> {
   await query(`DELETE FROM suppliers WHERE id = $1`, [id]);
+}
+
+/**
+ * Import rows from a Google Sheet into today's supplier log. Columns are matched
+ * to fields by header name (flexible), the company column is required, and
+ * re-imports skip rows already pulled from the same sheet.
+ */
+export async function importSuppliersFromSheet(
+  sheet: { headers: string[]; rows: string[][] },
+  sheetId: string
+): Promise<{ added: number; skipped: number }> {
+  const idx = mapColumns(sheet.headers);
+  if (idx.company < 0) {
+    throw new Error(
+      "Couldn't find a Company column in that sheet. Add a header like 'Company' or 'Supplier'."
+    );
+  }
+  const source = `sheet:${sheetId}`;
+  const { rows: existingRows } = await query<{ source_key: string }>(
+    `SELECT source_key FROM suppliers WHERE day = CURRENT_DATE AND source = $1 AND source_key IS NOT NULL`,
+    [source]
+  );
+  const seen = new Set(existingRows.map((r) => r.source_key));
+
+  let added = 0;
+  let skipped = 0;
+  for (const row of sheet.rows) {
+    const company = cell(row, idx.company);
+    if (!company) continue;
+    const key = company.toLowerCase();
+    if (seen.has(key)) {
+      skipped++;
+      continue;
+    }
+    seen.add(key);
+    const typeRaw = cell(row, idx.type).toLowerCase();
+    const type: SupplierType = typeRaw.startsWith("dist") ? "Distributor" : "Manufacturer";
+    await query(
+      `INSERT INTO suppliers (company, type, contact, email, phone, website, location, source, source_key)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [
+        company,
+        type,
+        cell(row, idx.contact) || null,
+        cell(row, idx.email) || null,
+        cell(row, idx.phone) || null,
+        cell(row, idx.website) || null,
+        cell(row, idx.location) || null,
+        source,
+        key,
+      ]
+    );
+    added++;
+  }
+  return { added, skipped };
+}
+
+function cell(row: string[], i: number): string {
+  return i >= 0 && row[i] != null ? String(row[i]).trim() : "";
+}
+
+function mapColumns(headers: string[]): {
+  company: number;
+  type: number;
+  contact: number;
+  email: number;
+  phone: number;
+  website: number;
+  location: number;
+} {
+  const find = (re: RegExp) =>
+    headers.findIndex((h) => re.test((h || "").toLowerCase()));
+  return {
+    company: find(/company|supplier|vendor|business|^name$/),
+    type: find(/type|category|kind/),
+    contact: find(/contact|rep|salesperson|sales contact|person/),
+    email: find(/e-?mail/),
+    phone: find(/phone|tel|mobile|cell/),
+    website: find(/website|url|site|web/),
+    location: find(/location|city|state|address|region/),
+  };
 }
 
 /* ------------------------------- Activity log ---------------------------- */

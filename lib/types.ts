@@ -8,6 +8,9 @@ export interface Assignment {
   material: string | null;
   need: string | null;
   raw_message: string | null;
+  sheet_id: string | null;
+  sheet_name: string | null;
+  sheet_url: string | null;
 }
 
 export interface Task {

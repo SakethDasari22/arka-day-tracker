@@ -128,6 +128,30 @@ async function createSchema(): Promise<void> {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `);
+
+  // Google OAuth tokens. Single-user tool, so we keep one row keyed by account.
+  await raw(`
+    CREATE TABLE IF NOT EXISTS google_tokens (
+      account TEXT PRIMARY KEY,
+      email TEXT,
+      access_token TEXT,
+      refresh_token TEXT,
+      scope TEXT,
+      token_type TEXT,
+      expiry_date BIGINT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  // Link a Google Sheet to an assignment (v2). IF NOT EXISTS keeps this safe to
+  // re-run on an existing database.
+  await raw(`ALTER TABLE assignments ADD COLUMN IF NOT EXISTS sheet_id TEXT`);
+  await raw(`ALTER TABLE assignments ADD COLUMN IF NOT EXISTS sheet_name TEXT`);
+  await raw(`ALTER TABLE assignments ADD COLUMN IF NOT EXISTS sheet_url TEXT`);
+
+  // Remember where an imported supplier came from, so re-imports don't duplicate.
+  await raw(`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS source TEXT`);
+  await raw(`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS source_key TEXT`);
 }
 
 /**

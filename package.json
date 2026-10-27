@@ -10,6 +10,7 @@
     "db:seed": "node --env-file=.env scripts/seed.mjs"
   },
   "dependencies": {
+    "googleapis": "^161.0.0",
     "next": "15.5.28",
     "pg": "8.13.1",
     "react": "19.0.0",

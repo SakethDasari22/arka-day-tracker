@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
 import type { Assignment, SupplierType, SupplierView } from "@/lib/types";
 
@@ -19,14 +21,45 @@ const EMPTY_FORM = {
 export default function ResearchScreen({
   assignment,
   suppliers: initial,
+  googleConnected,
 }: {
   assignment: Assignment | null;
   suppliers: SupplierView[];
+  googleConnected: boolean;
 }) {
+  const router = useRouter();
   const [suppliers, setSuppliers] = useState<SupplierView[]>(initial);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [filter, setFilter] = useState<Filter>("all");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [importing, setImporting] = useState(false);
+
+  const linkedSheet = assignment?.sheet_id
+    ? { name: assignment.sheet_name, url: assignment.sheet_url }
+    : null;
+
+  async function importFromSheet() {
+    setImporting(true);
+    setError("");
+    setNotice("");
+    try {
+      const res = await api<{ added: number; skipped: number }>("/api/sheets/import", {
+        method: "POST",
+      });
+      setNotice(
+        `Imported ${res.added} supplier${res.added === 1 ? "" : "s"} from the sheet` +
+          (res.skipped ? `, skipped ${res.skipped} already here.` : ".")
+      );
+      const fresh = await api<{ suppliers: SupplierView[] }>("/api/suppliers");
+      setSuppliers(fresh.suppliers);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Import failed");
+    } finally {
+      setImporting(false);
+    }
+  }
 
   const missingCount = suppliers.filter((s) => !s.complete).length;
 
@@ -87,18 +120,37 @@ export default function ResearchScreen({
           <a className="btn" href="/api/export">
             Download CSV
           </a>
-          <button
-            type="button"
-            className="btn"
-            title="Direct Google Sheets sync comes in the next version"
-            disabled
-            style={{ opacity: 0.55, cursor: "not-allowed" }}
-          >
-            Send to Google Sheet (soon)
-          </button>
+          {linkedSheet ? (
+            <button type="button" className="btn btn-primary" onClick={importFromSheet} disabled={importing}>
+              {importing ? "Importing…" : "Import from sheet"}
+            </button>
+          ) : (
+            <Link
+              className="btn"
+              href="/connect"
+              title={googleConnected ? "Link Allan's sheet on the Connections page" : "Connect Google first"}
+            >
+              Link a sheet
+            </Link>
+          )}
         </div>
       </header>
 
+      {linkedSheet && (
+        <div className="sub" style={{ marginTop: -8 }}>
+          Linked to{" "}
+          <a href={linkedSheet.url ?? "#"} target="_blank" rel="noreferrer">
+            {linkedSheet.name || "Allan's sheet"}
+          </a>{" "}
+          — Import pulls new rows in as tracked suppliers.
+        </div>
+      )}
+
+      {notice && (
+        <div style={{ color: "var(--green-ink)", fontSize: 13 }} role="status">
+          {notice}
+        </div>
+      )}
       {error && (
         <div style={{ color: "var(--red)", fontSize: 13 }} role="alert">
           {error}

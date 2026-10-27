@@ -68,9 +68,37 @@ on Vercel (portfolio demo) and on a Mac Mini (private, real data).
 - **Auth** — a lightweight cookie gate in `middleware.ts`; it's a convenience
   lock for a single-user tool, not a secrets vault.
 
+## Google integration (Gmail · Sheets · Drive)
+
+The deployed app signs in as **itself** with its own Google OAuth client, so you
+need to create that client once. ~5 minutes.
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com) → create a
+   project (any name).
+2. **APIs & Services → Enabled APIs → Enable APIs** and enable: **Gmail API**,
+   **Google Sheets API**, **Google Drive API**.
+3. **APIs & Services → OAuth consent screen** → External → fill the basics. While
+   it's in "Testing", add your own Google address under **Test users**.
+4. **APIs & Services → Credentials → Create credentials → OAuth client ID** →
+   type **Web application**. Add **Authorized redirect URIs**:
+   - `https://YOUR-VERCEL-URL/api/google/callback`
+   - `http://localhost:3000/api/google/callback` (for local testing)
+5. Copy the **Client ID** and **Client secret**. On Vercel (**Settings →
+   Environment Variables**) add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`,
+   then redeploy.
+6. Open the app → **Connections** → **Connect Google**, and sign in.
+
+Then:
+- **Today → Pull from Gmail** turns one of Allan's emails into an assignment plus
+  checklist tasks (summarized by Claude if `ANTHROPIC_API_KEY` is set, otherwise
+  by a built-in parser).
+- **Connections → Allan's supplier sheet** links the Google Sheet he shared.
+- **Supplier research → Import from sheet** pulls its rows into your supplier log
+  as tracked work (re-imports skip rows already there).
+
 ## Roadmap
 
-- **v2** — pull tasks from Slack and post the EOD report back; push the supplier
-  sheet straight to Google Sheets.
-- **v3** — an analytics page (suppliers per hour, contact-completion rate, time
-  by category) and multi-day history.
+- **Slack** — pull tasks Allan sends on Slack and post the EOD report back
+  (needs an app approved by Arka's workspace admin).
+- **Analytics page** — suppliers per hour, contact-completion rate, time by
+  category; plus multi-day history.

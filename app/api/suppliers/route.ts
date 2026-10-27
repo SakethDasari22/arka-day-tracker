@@ -1,9 +1,21 @@
 import { NextResponse } from "next/server";
-import { addSupplier } from "@/lib/queries";
+import { addSupplier, getSuppliers } from "@/lib/queries";
 import type { SupplierType } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export async function GET() {
+  try {
+    const suppliers = await getSuppliers();
+    return NextResponse.json({ suppliers });
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Failed to load suppliers" },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(req: Request) {
   try {

@@ -19,12 +19,19 @@ import type { FinderEvent, FinderInput, FinderResult, SavedSearch } from "./find
 const API = process.env.ANTHROPIC_API_URL || "https://api.anthropic.com/v1/messages";
 const MODEL = () => process.env.ANTHROPIC_RESEARCH_MODEL || "claude-sonnet-5-5";
 /** Leave headroom under the 300s serverless limit. */
-const TIME_BUDGET_MS = 270_000;
+export const TIME_BUDGET_MS = 270_000;
 const VERIFY_TIMEOUT_MS = 100_000;
 const CONCURRENCY = 5;
 
 export function finderConfigured(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return Boolean(process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY);
+}
+
+/** Which engine runs searches: Gemini's free tier when its key is set. */
+export function finderEngine(): "gemini" | "claude" | null {
+  if (process.env.GEMINI_API_KEY) return "gemini";
+  if (process.env.ANTHROPIC_API_KEY) return "claude";
+  return null;
 }
 
 /** Live searches cost API credits, so the open demo can't run them by default. */
@@ -39,7 +46,7 @@ export function lookupZip(zip: string) {
   return z ? { city: z.city, state: z.state, lat: z.latitude, lon: z.longitude } : null;
 }
 
-function coordsFor(zip: string, city: string, state: string): { lat: number; lon: number } | null {
+export function coordsFor(zip: string, city: string, state: string): { lat: number; lon: number } | null {
   const z = zip && /^\d{5}/.test(zip) ? zipcodes.lookup(zip.slice(0, 5)) : undefined;
   if (z) return { lat: z.latitude, lon: z.longitude };
   if (city && state) {
@@ -49,7 +56,7 @@ function coordsFor(zip: string, city: string, state: string): { lat: number; lon
   return null;
 }
 
-function miles(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+export function miles(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
   const R = 3958.8;
   const rad = (d: number) => (d * Math.PI) / 180;
   const dLat = rad(b.lat - a.lat);
@@ -133,7 +140,7 @@ async function research(
 }
 
 /** Pull the last JSON object/array out of Claude's reply. */
-function lastJson<T>(text: string): T | null {
+export function lastJson<T>(text: string): T | null {
   const fenced = [...text.matchAll(/```(?:json)?\s*([\s\S]*?)```/g)].map((m) => m[1]);
   const candidates = fenced.length ? fenced.reverse() : [text];
   for (const c of candidates) {
@@ -151,13 +158,13 @@ function lastJson<T>(text: string): T | null {
   return null;
 }
 
-const s = (v: unknown) => (typeof v === "string" ? v.trim() : v == null ? "" : String(v).trim());
-const isUrl = (v: string) => /^https?:\/\/\S+\.\S+/i.test(v);
-const isEmail = (v: string) => /^[^\s@<>()]+@[^\s@<>()]+\.[a-z]{2,}$/i.test(v);
+export const s = (v: unknown) => (typeof v === "string" ? v.trim() : v == null ? "" : String(v).trim());
+export const isUrl = (v: string) => /^https?:\/\/\S+\.\S+/i.test(v);
+export const isEmail = (v: string) => /^[^\s@<>()]+@[^\s@<>()]+\.[a-z]{2,}$/i.test(v);
 
 /* ------------------------------- Prompts -------------------------------- */
 
-const SYSTEM = `You research US packaging and industrial suppliers for Arka, a sourcing intermediary that serves 3PL and fulfillment companies. Results go to a manager, so nothing may be guessed.
+export const SYSTEM = `You research US packaging and industrial suppliers for Arka, a sourcing intermediary that serves 3PL and fulfillment companies. Results go to a manager, so nothing may be guessed.
 
 Hard rules:
 - Every value you return must come from a page or search result you actually saw in this conversation. Never fill a value from memory or from a pattern.
@@ -167,7 +174,7 @@ Hard rules:
 - Never mention or ask about Arka's client. Do not contact anyone; you are only reading public pages.
 - Exclude marketplaces and lead brokers (Alibaba, Amazon, eBay, Made-in-China, IndiaMART, quote-matching sites) and overseas-only companies.`;
 
-function discoverPrompt(i: FinderInput, place: string, exclude: string[], want: number): string {
+export function discoverPrompt(i: FinderInput, place: string, exclude: string[], want: number): string {
   return `Find US companies that manufacture or distribute: ${i.product}${i.dimensions ? ` (${i.dimensions})` : ""}.
 
 Search near ZIP ${i.zip} (${place}), within ${i.radius} miles. Start close and widen. Use product keyword + city/county/state searches, Thomasnet and state manufacturing directories, industry association member lists, and business listings. Include alternate product names and distributors that stock the item.
@@ -198,7 +205,7 @@ Reply with only a JSON object in a \`\`\`json block, empty strings for anything 
 
 /* -------------------------------- Engine -------------------------------- */
 
-interface Candidate {
+export interface Candidate {
   company: string;
   website: string;
   city: string;
@@ -423,7 +430,7 @@ function toResult(
 
 /* ------------------------------- Storage -------------------------------- */
 
-async function saveStart(i: FinderInput): Promise<number | null> {
+export async function saveStart(i: FinderInput): Promise<number | null> {
   try {
     const r = await query<{ id: number }>(
       `INSERT INTO supplier_searches (product, dimensions, zip, radius_miles, project_id, status)
@@ -436,7 +443,7 @@ async function saveStart(i: FinderInput): Promise<number | null> {
   }
 }
 
-async function saveEnd(id: number | null, status: string, results: FinderResult[], summary: string) {
+export async function saveEnd(id: number | null, status: string, results: FinderResult[], summary: string) {
   if (!id) return;
   await query(
     `UPDATE supplier_searches SET status=$2, results=$3, summary=$4, finished_at=now() WHERE id=$1`,

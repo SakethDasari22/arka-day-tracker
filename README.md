@@ -134,23 +134,30 @@ Then:
 
 ## Supplier finder
 
-Runs on the Claude API with live web search and web fetch, in two passes:
-1. **Discover** — search near the ZIP (directories, listings, company sites)
-   for companies that make or stock the product; keep only those within the
-   radius (distance from ZIP centroids, nearest first).
-2. **Verify** — for each one, open its own pages and confirm it is active,
-   shows the product, and find the best contact (named sales person + email,
-   then phone, then contact form).
+Runs free on Google's Gemini API free tier, in three steps:
+1. **Discover** — Gemini 2.5 Flash with Google Search grounding lists
+   companies near the ZIP that make or stock the product; only those inside
+   the radius are kept (distance from ZIP centroids, nearest first).
+2. **Read** — the app opens each company's own site (homepage, contact,
+   about/team and product pages) and pulls emails, phone numbers, contact
+   forms and street ZIPs straight out of the HTML with pattern matching,
+   including Cloudflare-hidden emails. Fax numbers are skipped.
+3. **Judge** — a small free model (Gemini 3.1 Flash-Lite) reads only that
+   page text to say whether the product is shown and who the named sales
+   contact is. A "yes" needs an exact quote found on the page, and a name
+   must be printed on the page, or they are discarded.
 
-Nothing is guessed: an email without the page it was printed on is blanked, a
-name without a source page is blanked, and companies that are closed, out of
-range, or have no way to contact them are dropped. Every search is saved.
+Companies that are parked, out of range, block automated reading, or show no
+email, phone or form are dropped and listed in the search log. Every value
+links to the page it was read from. Every search is saved.
 
-**Setup:** add `ANTHROPIC_API_KEY` (and optionally `ANTHROPIC_RESEARCH_MODEL`,
-default `claude-sonnet-5-5`). Web search must be enabled for your organization
-in the Claude Console. Live searches only run when `APP_PASSWORD` is set (or
-`FINDER_PUBLIC=true`), so the public demo can't spend your credits. A search
-takes 2–4 minutes and is capped at 300 seconds per run.
+**Setup (free):** create a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+and add it as `GEMINI_API_KEY`. Live searches only run when `APP_PASSWORD` is
+set (or `FINDER_PUBLIC=true`). Free-tier limits allow roughly 10 searches a
+day; a search takes 2–4 minutes.
+
+**Optional paid engine:** if `ANTHROPIC_API_KEY` is set and `GEMINI_API_KEY`
+is not, searches run on Claude with web search and web fetch instead.
 
 ## Roadmap
 

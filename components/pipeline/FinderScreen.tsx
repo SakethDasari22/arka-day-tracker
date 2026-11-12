@@ -263,8 +263,9 @@ export default function FinderScreen({
 
       {!configured && (
         <div className="setup-note">
-          <strong>Live search needs an Anthropic API key.</strong> Add <code>ANTHROPIC_API_KEY</code> in Vercel →
-          Settings → Environment Variables (or your <code>.env</code> on the Mac Mini), then redeploy.
+          <strong>Live search needs a free Gemini API key.</strong> Get one at{" "}
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com/apikey</a>, add it as{" "}
+          <code>GEMINI_API_KEY</code> in Vercel → Settings → Environment Variables, then redeploy.
         </div>
       )}
       {configured && !allowed && (
@@ -306,7 +307,7 @@ export default function FinderScreen({
           </Field>
           <div style={{ gridColumn: "1 / -1" }} className="row-between">
             <span className="sub" style={{ fontSize: 13, marginTop: 0 }}>
-              Takes about 2–4 minutes. Suppliers already on the chosen project are skipped.
+              Takes about 2–4 minutes. Every email and phone number is read from the supplier's own website. Suppliers already on the chosen project are skipped.
             </span>
             <button type="submit" className="btn btn-primary" disabled={!canRun || running}>
               {running ? "Searching…" : "Find suppliers"}

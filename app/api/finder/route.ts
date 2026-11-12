@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { finderAllowed, finderConfigured, listSearches, runFinder } from "@/lib/finder";
+import { finderAllowed, finderConfigured, finderEngine, listSearches, runFinder } from "@/lib/finder";
+import { runFreeFinder } from "@/lib/finder-free";
 import type { FinderEvent, FinderInput } from "@/lib/finder-types";
 
 export const runtime = "nodejs";
@@ -19,7 +20,7 @@ export async function GET() {
 export async function POST(req: Request) {
   if (!finderConfigured()) {
     return NextResponse.json(
-      { error: "Add ANTHROPIC_API_KEY in your environment variables to run live searches." },
+      { error: "Add GEMINI_API_KEY (free from Google AI Studio) in your environment variables to run live searches." },
       { status: 400 }
     );
   }
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
       // Heartbeat so proxies don't close a quiet connection.
       const beat = setInterval(() => emit({ type: "status", text: "" }), 15_000);
       try {
-        await runFinder(input, emit);
+        await (finderEngine() === "gemini" ? runFreeFinder : runFinder)(input, emit);
       } catch (e) {
         emit({ type: "error", text: e instanceof Error ? e.message : "Search failed" });
       } finally {

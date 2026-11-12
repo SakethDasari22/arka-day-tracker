@@ -1,8 +1,9 @@
 # Arka Day Tracker
 
 A small internal web app for tracking an operations-intern workday at Arka:
-Allan's daily tasks, a supplier research log, and an end-of-day report that
-builds itself from what you logged.
+Allan's daily tasks, a supplier research log, an end-of-day report that
+builds itself from what you logged, and an end-to-end **sourcing pipeline**
+that tracks every client project from request to delivery, with analytics.
 
 Built with **Next.js (App Router) + Postgres + TypeScript** so it runs the same
 on Vercel (portfolio demo) and on a Mac Mini (private, real data).
@@ -16,6 +17,40 @@ on Vercel (portfolio demo) and on a Mac Mini (private, real data).
 | **Today** | Greeting, today's tasks from Allan (check them off), a one-line quick log, and a running activity feed. |
 | **Supplier research** | Add suppliers with their sales contact, filter for missing info, and export the list as a CSV that opens in Excel or Google Sheets. |
 | **End-of-day report** | Auto-built summary — tasks done, suppliers delivered, where the time went — plus a ready-to-send message to Allan. |
+| **Projects** | One card per client request with an 8-stage tracker. Inside: suppliers contacted, quotes ranked by a weighted score, samples and client approval, bulk order and delivery. |
+| **Analytics** | Supplier funnel, days spent between stages, reply rate by state and supplier type, price spread, savings vs the median quote, on-time delivery, and a follow-up list. |
+
+---
+
+## Sourcing pipeline
+
+How a project runs, and where each step is logged:
+
+| # | Step | Logged as |
+| --- | --- | --- |
+| 1 | Client sends the requirement: product, quantity, specs, deadline | **New project** |
+| 2 | Research suppliers who can make it exactly | **Suppliers contacted** (one row each, with reply status) |
+| 3 | Suppliers send quotes | **Log quote**: unit price, MOQ, lead time, spec match, shipping |
+| 4 | Compare and pick the best | Quotes are ranked automatically; **Shortlist top 3** |
+| 5 | Sample goes to the client | **Send sample**, then the sent date |
+| 6 | Client approves or rejects | Decision + feedback |
+| 7 | Bulk order ships to the client | **Place bulk order**, ship and delivery dates |
+
+The stage tracker fills itself in from those records, so there is nothing to
+update by hand. Arka sits in the middle, so the client never sees the supplier
+and the supplier never sees the client — in the public demo every name is fake.
+
+**Supplier score** (`quote_scores` view): price (incl. shipping per unit) 40%,
+lead time 25%, spec match 20%, MOQ 15%. Price, lead time and MOQ are min-max
+scaled within each project; spec match is a 1–5 rating. The Analytics page
+reports how often the #1-ranked quote is the one the client approves.
+
+**SQL** — the tables and the two analysis views (`project_timeline`,
+`quote_scores`) are in [`sql/pipeline.sql`](sql/pipeline.sql); the Analytics
+queries are in `lib/pipeline-analytics.ts`.
+
+**Power BI / Excel** — *Export CSV* on Projects or Analytics downloads one flat
+table (one row per supplier contacted, with its quote, sample and order).
 
 ---
 
@@ -100,5 +135,5 @@ Then:
 
 - **Slack** — pull tasks Allan sends on Slack and post the EOD report back
   (needs an app approved by Arka's workspace admin).
-- **Analytics page** — suppliers per hour, contact-completion rate, time by
-  category; plus multi-day history.
+- **Power BI version** of the Analytics page, built on the CSV export.
+- Pull supplier replies from Gmail straight into the outreach list.

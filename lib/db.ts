@@ -1,4 +1,6 @@
 import { Pool, type QueryResult, type QueryResultRow } from "pg";
+import { PIPELINE_TABLES, PIPELINE_VIEWS, PIPELINE_VIEWS_VERSION } from "./pipeline-schema";
+import { seedDemoPipeline } from "./pipeline-seed";
 
 /**
  * One Postgres pool per server process. On serverless (Vercel) this is created
@@ -70,6 +72,9 @@ function ensureReady(): Promise<void> {
     readyPromise = (async () => {
       await createSchema();
       await seedDemoIfAppropriate();
+      if (!process.env.APP_PASSWORD && process.env.SEED_DEMO !== "false") {
+        await seedDemoPipeline(raw);
+      }
     })().catch((err) => {
       // Reset so a later request can retry after a transient DB hiccup.
       readyPromise = null;
@@ -152,6 +157,24 @@ async function createSchema(): Promise<void> {
   // Remember where an imported supplier came from, so re-imports don't duplicate.
   await raw(`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS source TEXT`);
   await raw(`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS source_key TEXT`);
+
+  // Sourcing pipeline (v3): projects -> outreach -> quotes -> samples -> orders.
+  for (const sql of PIPELINE_TABLES) await raw(sql);
+
+  // Views are only rebuilt when their definition changes (bump the version),
+  // so normal cold starts never drop a view another request is reading.
+  await raw(`CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT)`);
+  const meta = await raw<{ value: string }>(
+    `SELECT value FROM app_meta WHERE key = 'pipeline_views'`
+  );
+  if (meta.rows[0]?.value !== PIPELINE_VIEWS_VERSION) {
+    for (const sql of PIPELINE_VIEWS) await raw(sql);
+    await raw(
+      `INSERT INTO app_meta (key, value) VALUES ('pipeline_views', $1)
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      [PIPELINE_VIEWS_VERSION]
+    );
+  }
 }
 
 /**

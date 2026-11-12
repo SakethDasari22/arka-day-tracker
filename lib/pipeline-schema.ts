@@ -82,6 +82,20 @@ export const PIPELINE_TABLES: string[] = [
      notes TEXT,
      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
    )`,
+  // Supplier finder runs: inputs, status and the verified results as JSON.
+  `CREATE TABLE IF NOT EXISTS supplier_searches (
+     id SERIAL PRIMARY KEY,
+     product TEXT NOT NULL,
+     dimensions TEXT,
+     zip TEXT NOT NULL,
+     radius_miles INT NOT NULL,
+     project_id INT REFERENCES projects(id) ON DELETE SET NULL,
+     status TEXT NOT NULL DEFAULT 'running',
+     summary TEXT,
+     results JSONB,
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+     finished_at TIMESTAMPTZ
+   )`,
   `CREATE INDEX IF NOT EXISTS outreach_project_idx ON outreach(project_id)`,
   `CREATE INDEX IF NOT EXISTS quotes_project_idx ON quotes(project_id)`,
   `CREATE INDEX IF NOT EXISTS samples_project_idx ON samples(project_id)`,

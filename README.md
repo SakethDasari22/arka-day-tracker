@@ -18,6 +18,7 @@ on Vercel (portfolio demo) and on a Mac Mini (private, real data).
 | **Supplier research** | Add suppliers with their sales contact, filter for missing info, and export the list as a CSV that opens in Excel or Google Sheets. |
 | **End-of-day report** | Auto-built summary — tasks done, suppliers delivered, where the time went — plus a ready-to-send message to Allan. |
 | **Projects** | One card per client request with an 8-stage tracker. Inside: suppliers contacted, quotes ranked by a weighted score, samples and client approval, bulk order and delivery. |
+| **Find suppliers** | Enter the product, dimensions, a ZIP and a radius (up to 1,000 miles). Claude searches the web, opens each company's site, and returns company, contact person, email or contact form, and phone — each with the page it was read from. Add the ones you want to a project in one click. |
 | **Analytics** | Supplier funnel, days spent between stages, reply rate by state and supplier type, price spread, savings vs the median quote, on-time delivery, and a follow-up list. |
 
 ---
@@ -130,6 +131,26 @@ Then:
 - **Connections → Allan's supplier sheet** links the Google Sheet he shared.
 - **Supplier research → Import from sheet** pulls its rows into your supplier log
   as tracked work (re-imports skip rows already there).
+
+## Supplier finder
+
+Runs on the Claude API with live web search and web fetch, in two passes:
+1. **Discover** — search near the ZIP (directories, listings, company sites)
+   for companies that make or stock the product; keep only those within the
+   radius (distance from ZIP centroids, nearest first).
+2. **Verify** — for each one, open its own pages and confirm it is active,
+   shows the product, and find the best contact (named sales person + email,
+   then phone, then contact form).
+
+Nothing is guessed: an email without the page it was printed on is blanked, a
+name without a source page is blanked, and companies that are closed, out of
+range, or have no way to contact them are dropped. Every search is saved.
+
+**Setup:** add `ANTHROPIC_API_KEY` (and optionally `ANTHROPIC_RESEARCH_MODEL`,
+default `claude-sonnet-5-5`). Web search must be enabled for your organization
+in the Claude Console. Live searches only run when `APP_PASSWORD` is set (or
+`FINDER_PUBLIC=true`), so the public demo can't spend your credits. A search
+takes 2–4 minutes and is capped at 300 seconds per run.
 
 ## Roadmap
 

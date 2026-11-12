@@ -130,7 +130,29 @@ const PROJECTS: SeedProject[] = [
   },
 ];
 
+/** One finished, fake supplier search so the Find suppliers page has an example. */
+const DEMO_SEARCH = [
+  { company: "Prairie Corrugated (demo)", website: "https://example.com", type: "Manufacturer", city: "Aurora", state: "IL", zip: "60505", distance_miles: 14, contact_person: "J. Rivera", contact_title: "Sales Manager", email: "jrivera@example.com", email_type: "personal", phone: "(630) 555-0144", contact_form_url: "https://example.com/contact", product_available: "yes", sources: { product: "https://example.com/products", email: "https://example.com/contact" }, notes: "Shows RSC and die-cut mailers on product page" },
+  { company: "Riverbend Box Co. (demo)", website: "https://example.com", type: "Manufacturer", city: "Joliet", state: "IL", zip: "60431", distance_miles: 9, contact_person: "", contact_title: "", email: "sales@example.com", email_type: "generic", phone: "(815) 555-0101", contact_form_url: "https://example.com/quote", product_available: "yes", sources: { product: "https://example.com/mailers", email: "https://example.com/contact" }, notes: "Custom printed mailers, 1–4 color" },
+  { company: "Great Lakes Container (demo)", website: "https://example.com", type: "Distributor", city: "Chicago", state: "IL", zip: "60632", distance_miles: 24, contact_person: "A. Chen", contact_title: "Inside Sales", email: "", email_type: "", phone: "(312) 555-0166", contact_form_url: "https://example.com/contact-us", product_available: "yes", sources: { person: "https://example.com/team" }, notes: "Stocks standard sizes; custom print via partner" },
+  { company: "Hoosier Carton (demo)", website: "https://example.com", type: "Manufacturer", city: "Gary", state: "IN", zip: "46402", distance_miles: 44, contact_person: "", contact_title: "", email: "", email_type: "", phone: "(219) 555-0190", contact_form_url: "https://example.com/rfq", product_available: "unclear", sources: {}, notes: "Corrugated boxes listed; mailers not shown" },
+];
+
 export async function seedDemoPipeline(raw: Raw): Promise<void> {
+  const searches = await raw<{ n: string }>(`SELECT count(*) AS n FROM supplier_searches`);
+  if (Number(searches.rows[0]?.n ?? 0) === 0) {
+    await raw(
+      `INSERT INTO supplier_searches (product, dimensions, zip, radius_miles, status, summary, results, finished_at)
+       VALUES ($1,$2,'60446',50,'done',$3,$4, now())`,
+      [
+        "Printed corrugated mailer boxes",
+        "12 x 9 x 4 in, 32 ECT kraft",
+        "Sample search (demo data) · 3 with the product confirmed · 2 with an email",
+        JSON.stringify(DEMO_SEARCH),
+      ]
+    );
+  }
+
   const existing = await raw<{ n: string }>(`SELECT count(*) AS n FROM projects`);
   if (Number(existing.rows[0]?.n ?? 0) > 0) return;
 

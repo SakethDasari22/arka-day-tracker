@@ -711,3 +711,151 @@ td.num {
   line-height: 1.6;
   color: var(--ink-2);
 }
+
+/* Supplier finder */
+.faint {
+  color: var(--muted-2);
+  font-size: 12px;
+}
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.stat-row strong {
+  color: var(--ink);
+  font-size: 15px;
+  margin-right: 4px;
+}
+.log {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.log summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+.log ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  line-height: 1.6;
+  max-height: 220px;
+  overflow: auto;
+}
+.spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  border-top-color: var(--clay);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 3s;
+  }
+}
+.add-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: #f7f8fa;
+  border-radius: 8px;
+}
+.add-bar .select-sm {
+  max-width: 280px;
+}
+table.data.finder td {
+  vertical-align: top;
+}
+.sources {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+table.data td.sources {
+  display: table-cell;
+}
+.sources a {
+  display: block;
+}
+.link-btn {
+  background: none;
+  border: none;
+  padding: 4px 0;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.link-btn:hover strong {
+  color: var(--clay);
+  text-decoration: underline;
+}
+
+/* Finder results become stacked cards on phones */
+@media (max-width: 640px) {
+  table.data.finder {
+    min-width: 0;
+  }
+  table.data.finder thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  table.data.finder,
+  table.data.finder tbody,
+  table.data.finder tr,
+  table.data.finder td,
+  table.data.finder td.sources {
+    display: block;
+  }
+  table.data.finder tr {
+    position: relative;
+    padding: 14px 0 12px 44px;
+    border-bottom: 1px solid var(--line-2);
+  }
+  table.data.finder td {
+    padding: 3px 0;
+    border: none;
+  }
+  table.data.finder td.cell-check {
+    position: absolute;
+    left: 0;
+    top: 8px;
+  }
+  table.data.finder td[data-label] {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 8px;
+    font-size: 13px;
+  }
+  table.data.finder td[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted-2);
+    font-size: 12px;
+  }
+  table.data.finder td.sources {
+    flex-direction: row;
+  }
+  table.data.finder td.cell-company {
+    margin-bottom: 4px;
+  }
+}

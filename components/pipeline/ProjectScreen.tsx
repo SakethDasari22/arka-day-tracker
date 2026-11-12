@@ -202,9 +202,12 @@ function OutreachCard({ detail, m, onQuote }: { detail: ProjectDetail; m: M; onQ
               : "Log every supplier you reach out to, even the ones that never answer."}
           </div>
         </div>
-        <button type="button" className="btn btn-sm" onClick={() => setOpen((x) => !x)} aria-expanded={open}>
-          {open ? "Close" : "Add supplier"}
-        </button>
+        <div className="wrap-gap" style={{ gap: 8 }}>
+          <Link className="btn btn-sm" href={`/find?project=${p.id}`}>Find suppliers</Link>
+          <button type="button" className="btn btn-sm" onClick={() => setOpen((x) => !x)} aria-expanded={open}>
+            {open ? "Close" : "Add supplier"}
+          </button>
+        </div>
       </div>
 
       {open && (

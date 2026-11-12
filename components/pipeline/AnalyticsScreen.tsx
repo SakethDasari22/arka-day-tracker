@@ -178,7 +178,10 @@ function Head() {
           How fast projects move, which suppliers answer, and what the comparison saves.
         </div>
       </div>
-      <a className="btn" href="/api/pipeline/export">Export CSV for Power BI</a>
+      <div className="wrap-gap">
+        <Link className="btn" href="/find">Find suppliers</Link>
+        <a className="btn" href="/api/pipeline/export">Export CSV for Power BI</a>
+      </div>
     </header>
   );
 }
